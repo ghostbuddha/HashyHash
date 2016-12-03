@@ -1,6 +1,3 @@
-#!/bin/bash
-
-
 # Sean Szumlanski
 # COP 3502, Fall 2016
 
