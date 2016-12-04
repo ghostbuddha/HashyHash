@@ -26,7 +26,7 @@ int nextPrime(int n) {
 	return n;
 }
 
-int calc_probe(int capacity, int index, int offset, int probing) {
+int calc_probe(int capacity, unsigned int index, int offset, int probing) {
   return (probing == LINEAR ? (index + offset) : (index + (offset*offset))) % capacity;
 }
 
@@ -65,8 +65,6 @@ HashTable *destroyHashTable(HashTable *h) {
 
 int setProbingMechanism(HashTable *h, ProbingType probing) {
   if (h == NULL) return HASH_ERR;
-
-
   if (probing != LINEAR && probing != QUADRATIC) return HASH_ERR;
 
   h->probing = probing;
@@ -156,11 +154,44 @@ int insert(HashTable *h, int key) {
 }
 
 int search(HashTable *h, int key) {
+  if (h == NULL) return -1;
+  if (h->hashFunction == NULL) return -1;
 
+  h->stats.opCount++;
+
+  unsigned int index = h->hashFunction(key) % h->capacity;
+
+  if (h->array[index] == key) {
+    return index;
+  } else {
+    int iterations, probe;
+
+    h->stats.collisions++;
+
+    for (iterations = 1; iterations <= h->capacity; iterations++) {
+      probe = calc_probe(h->capacity, index, iterations, h->probing);
+
+      if (h->array[probe] == key) return probe;
+
+      h->stats.collisions++;
+    }
+  }
+
+  return -1;
 }
 
 int delete(HashTable *h, int key) {
+  if (h == NULL) return -1;
+  if (h->hashFunction == NULL) return -1;
 
+  int index = search(h, key);
+
+  if (index != -1) {
+    h->array[index] = DIRTY;
+    h->size--;
+  }
+
+  return index;
 }
 
 double difficultyRating(void) {
