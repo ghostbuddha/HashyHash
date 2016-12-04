@@ -106,7 +106,7 @@ int expandHashTable(HashTable *h) {
   for (elem = 0; elem < old_capacity; elem++) {
     item = old_array[elem];
 
-    if (item != UNUSED) insert(h, item);
+    if (item != UNUSED && item != DIRTY) insert(h, item);
   }
 
   free(old_array);
@@ -163,21 +163,25 @@ int search(HashTable *h, int key) {
 
   if (h->array[index] == key) {
     return index;
-  } else {
-    int iterations, probe;
-
-    h->stats.collisions++;
-
-    for (iterations = 1; iterations <= h->capacity; iterations++) {
-      probe = calc_probe(h->capacity, index, iterations, h->probing);
-
-      if (h->array[probe] == key) return probe;
-
-      h->stats.collisions++;
-    }
+  } else if (h->array[index] == UNUSED) {
+    return -1;
   }
 
-  return -1;
+  int iterations, probe;
+
+  /* h->stats.collisions++; */
+
+  for (iterations = 1; iterations <= h->capacity; iterations++) {
+    probe = calc_probe(h->capacity, index, iterations, h->probing);
+
+    if (h->array[probe] == key) break;
+
+    h->stats.collisions++;
+  }
+
+  if (iterations > h->capacity) return -1;
+
+  return probe;
 }
 
 int delete(HashTable *h, int key) {
