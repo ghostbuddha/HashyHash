@@ -31,7 +31,7 @@ HashTable *makeHashTable(int capacity) {
 
   HashTable *h = malloc(sizeof(HashTable));
 
-  if (capacity < DEFAULT_CAPACITY) capacity = DEFAULT_CAPACITY;
+  if (capacity <= 0) capacity = DEFAULT_CAPACITY;
 
   h->array = malloc(sizeof(int)*capacity);
 
@@ -61,7 +61,9 @@ HashTable *destroyHashTable(HashTable *h) {
 
 int setProbingMechanism(HashTable *h, ProbingType probing) {
   if (h == NULL) return HASH_ERR;
-  if (probing != LINEAR || probing != QUADRATIC) return HASH_ERR;
+
+
+  if (probing != LINEAR && probing != QUADRATIC) return HASH_ERR;
 
   h->probing = probing;
 
@@ -95,7 +97,7 @@ int expandHashTable(HashTable *h) {
 
   h->array = malloc(sizeof(int)*h->capacity);
 
-  for (elem = 0; elem < h->capacity-1; elem++) {
+  for (elem = 0; elem < h->capacity; elem++) {
     h->array[elem] = UNUSED;
   }
 
@@ -126,22 +128,8 @@ int insert(HashTable *h, int key) {
 
   if (h->array[index] == UNUSED) {
     h->array[index] = key;
-  } else if (h->probing == LINEAR) {
-    h->stats.collisions++;
 
-    for (i = 1; i <= h->capacity; i++) {
-      probe = (index + i) % h->capacity;
-
-      if (h->array[probe] == UNUSED) {
-        h->array[probe] = key;
-        break;
-      }
-
-      h->stats.collisions++;
-    }
-
-    if (i > h->capacity) return HASH_ERR;
-  } else {
+  } else if (h->probing == QUADRATIC) {
     h->stats.collisions++;
 
     for (i = 1; i <= h->capacity; i++) {
@@ -156,6 +144,23 @@ int insert(HashTable *h, int key) {
     }
 
     if (i > h->capacity) return HASH_ERR;
+
+  } else {
+    h->stats.collisions++;
+
+    for (i = 1; i <= h->capacity; i++) {
+      probe = (index + i) % h->capacity;
+
+      if (h->array[probe] == UNUSED) {
+        h->array[probe] = key;
+        break;
+      }
+
+      h->stats.collisions++;
+    }
+
+    if (i > h->capacity) return HASH_ERR;
+
   }
 
   h->size++;
