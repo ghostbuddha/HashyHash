@@ -26,6 +26,10 @@ int nextPrime(int n) {
 	return n;
 }
 
+int calc_probe(int capacity, int index, int offset, int probing) {
+  return (probing == LINEAR ? (index + offset) : (index + (offset*offset))) % capacity;
+}
+
 HashTable *makeHashTable(int capacity) {
   int index;
 
@@ -122,34 +126,17 @@ int insert(HashTable *h, int key) {
     if (!expandHashTable(h)) return HASH_ERR;
   }
 
-  int i, probe, index;
-
-  index = h->hashFunction(key) % h->capacity;
+  unsigned int index = h->hashFunction(key) % h->capacity;
 
   if (h->array[index] == UNUSED) {
     h->array[index] = key;
-
-  } else if (h->probing == QUADRATIC) {
-    h->stats.collisions++;
-
-    for (i = 1; i <= h->capacity; i++) {
-      probe = (index + (i*i)) % h->capacity;
-
-      if (h->array[probe] == UNUSED) {
-        h->array[probe] = key;
-        break;
-      }
-
-      h->stats.collisions++;
-    }
-
-    if (i > h->capacity) return HASH_ERR;
-
   } else {
+    int iterations, probe;
+
     h->stats.collisions++;
 
-    for (i = 1; i <= h->capacity; i++) {
-      probe = (index + i) % h->capacity;
+    for (iterations = 1; iterations <= h->capacity; iterations++) {
+      probe = calc_probe(h->capacity, index, iterations, h->probing);
 
       if (h->array[probe] == UNUSED) {
         h->array[probe] = key;
@@ -159,8 +146,7 @@ int insert(HashTable *h, int key) {
       h->stats.collisions++;
     }
 
-    if (i > h->capacity) return HASH_ERR;
-
+    if (iterations > h->capacity) return HASH_ERR;
   }
 
   h->size++;
