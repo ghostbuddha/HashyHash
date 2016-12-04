@@ -31,21 +31,21 @@ HashTable *makeHashTable(int capacity) {
 
   HashTable *h = malloc(sizeof(HashTable));
 
+  if (capacity < DEFAULT_CAPACITY) capacity = DEFAULT_CAPACITY;
 
   h->array = malloc(sizeof(int)*capacity);
 
-  for (index = 0; index < capacity-1; index++) {
+  for (index = 0; index < capacity; index++) {
     h->array[index] = UNUSED;
   }
 
-  if (capcity < DEFAULT_CAPACITY) capacity = DEFAULT_CAPACITY;
 
   h->capacity = capacity;
   h->size = 0;
   h->hashFunction = NULL;
   h->probing = LINEAR;
   h->stats.opCount = 0;
-  h->stats.collisions =0;
+  h->stats.collisions = 0;
 
   return h;
 }
@@ -99,7 +99,7 @@ int expandHashTable(HashTable *h) {
     h->array[elem] = UNUSED;
   }
 
-  for (elem = 0; elem < (old_capacity-1); elem++) {
+  for (elem = 0; elem < old_capacity; elem++) {
     item = old_array[elem];
 
     if (item != UNUSED) insert(h, item);
@@ -120,15 +120,46 @@ int insert(HashTable *h, int key) {
     if (!expandHashTable(h)) return HASH_ERR;
   }
 
-  int index = h->hashFunction(key);
+  int i, probe, index;
+
+  index = h->hashFunction(key) % h->capacity;
 
   if (h->array[index] == UNUSED) {
     h->array[index] = key;
   } else if (h->probing == LINEAR) {
+    h->stats.collisions++;
 
+    for (i = 1; i <= h->capacity; i++) {
+      probe = (index + i) % h->capacity;
+
+      if (h->array[probe] == UNUSED) {
+        h->array[probe] = key;
+        break;
+      }
+
+      h->stats.collisions++;
+    }
+
+    if (i > h->capacity) return HASH_ERR;
   } else {
+    h->stats.collisions++;
 
+    for (i = 1; i <= h->capacity; i++) {
+      probe = (index + (i*i)) % h->capacity;
+
+      if (h->array[probe] == UNUSED) {
+        h->array[probe] = key;
+        break;
+      }
+
+      h->stats.collisions++;
+    }
+
+    if (i > h->capacity) return HASH_ERR;
   }
+
+  h->size++;
+  h->stats.opCount++;
 
   return HASH_OK;
 }
