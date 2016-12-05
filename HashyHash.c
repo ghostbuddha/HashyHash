@@ -65,11 +65,13 @@ HashTable *destroyHashTable(HashTable *h) {
 
 int setProbingMechanism(HashTable *h, ProbingType probing) {
   if (h == NULL) return HASH_ERR;
-  if (probing != LINEAR && probing != QUADRATIC) return HASH_ERR;
 
-  h->probing = probing;
+  if (probing == LINEAR || probing == QUADRATIC) {
+    h->probing = probing;
+    return HASH_OK;
+  }
 
-  return HASH_OK;
+  return HASH_ERR;
 }
 
 int setHashFunction(HashTable *h, unsigned int (*hashFunction)(int)) {
@@ -94,8 +96,11 @@ int expandHashTable(HashTable *h) {
   int elem, item, old_capacity = h->capacity, keep_op = h->stats.opCount;
   int *old_array = h->array;
 
-  if (h->probing == LINEAR) h->capacity = (h->capacity * 2) + 1;
-  if (h->probing == QUADRATIC) h->capacity = nextPrime((h->capacity*2) + 1);
+  if (h->probing == LINEAR) {
+    h->capacity = (h->capacity * 2) + 1;
+  } else {
+    h->capacity = nextPrime((h->capacity*2) + 1);
+  }
 
   h->array = malloc(sizeof(int)*h->capacity);
 
@@ -103,10 +108,14 @@ int expandHashTable(HashTable *h) {
     h->array[elem] = UNUSED;
   }
 
+  h->size = 0;
+
   for (elem = 0; elem < old_capacity; elem++) {
     item = old_array[elem];
 
-    if (item != UNUSED && item != DIRTY) insert(h, item);
+    if (item == UNUSED || item == DIRTY) continue;
+
+    insert(h, item);
   }
 
   free(old_array);
@@ -133,7 +142,7 @@ int insert(HashTable *h, int key) {
 
     h->stats.collisions++;
 
-    for (iterations = 1; iterations <= h->capacity; iterations++) {
+    for (iterations = 1; iterations < h->capacity; iterations++) {
       probe = calc_probe(h->capacity, index, iterations, h->probing);
 
       if (h->array[probe] == UNUSED) {
@@ -144,7 +153,7 @@ int insert(HashTable *h, int key) {
       h->stats.collisions++;
     }
 
-    if (iterations > h->capacity) return HASH_ERR;
+    if (iterations >= h->capacity-1) return HASH_ERR;
   }
 
   h->size++;
@@ -169,17 +178,19 @@ int search(HashTable *h, int key) {
 
   int iterations, probe;
 
-  /* h->stats.collisions++; */
-
-  for (iterations = 1; iterations <= h->capacity; iterations++) {
+  for (iterations = 0; iterations < h->capacity; iterations++) {
     probe = calc_probe(h->capacity, index, iterations, h->probing);
 
-    if (h->array[probe] == key) break;
+    if (h->array[probe] == key) {
+      break;
+    } else if (h->array[probe] == UNUSED) {
+      return -1;
+    }
 
     h->stats.collisions++;
   }
 
-  if (iterations > h->capacity) return -1;
+  if (iterations >= h->capacity-1) return -1;
 
   return probe;
 }
